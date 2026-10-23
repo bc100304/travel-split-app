@@ -5,10 +5,10 @@ import {
   Copy,
   Check,
   Terminal,
-  FileCode,
   ShieldCheck,
   Sparkles,
-  ExternalLink
+  AlertTriangle,
+  HelpCircle
 } from 'lucide-react';
 
 interface GitHubPagesGuideModalProps {
@@ -20,7 +20,8 @@ const GITHUB_ACTIONS_WORKFLOW = `name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -38,25 +39,24 @@ jobs:
       url: \${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Build
+      - name: Build application
         run: npm run build
 
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
 
-      - name: Upload artifact
+      - name: Upload dist artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
@@ -91,7 +91,7 @@ export const GitHubPagesGuideModal: React.FC<GitHubPagesGuideModalProps> = ({
             </span>
             <div>
               <h2 className="text-base font-bold text-slate-800">
-                GitHub Pages 免費發布指南
+                GitHub Pages 免費發布與 Actions 設定
               </h2>
               <p className="text-xs text-slate-500">
                 免費託管、自帶 HTTPS 加密（滿足 PWA 安裝與 GPS 定位需求）
@@ -107,26 +107,35 @@ export const GitHubPagesGuideModal: React.FC<GitHubPagesGuideModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto space-y-6 text-xs text-slate-600 leading-relaxed">
-          {/* Highlights */}
-          <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-1.5 text-emerald-900">
-            <div className="flex items-center gap-1.5 font-bold text-sm text-emerald-800">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>為什麼推薦 GitHub Pages？</span>
+        <div className="p-5 overflow-y-auto space-y-5 text-xs text-slate-600 leading-relaxed">
+          {/* Troubleshooting Alert */}
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 space-y-2 text-amber-900">
+            <div className="flex items-center gap-1.5 font-bold text-sm text-amber-800">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Actions 執行失敗 (Failed)？三大常見原因與解決方法：</span>
             </div>
-            <p>
-              1. <strong>永久免費</strong>且無需後端主機維護。<br />
-              2. <strong>原生支援 HTTPS</strong>，瀏覽器 Geolocation API (GPS) 與 PWA 手機主畫面安裝<strong>必須在 HTTPS 環境下才能啟用</strong>，GitHub Pages 完全符合規範！<br />
-              3. 本專案 <code>vite.config.ts</code> 已預先設定 <code>base: './'</code>，無論在根目錄或子目錄 (如 <code>username.github.io/my-trip/</code>) 都能正確加載所有靜態資源！
-            </p>
+            <div className="space-y-1.5 text-xs pl-2">
+              <p>
+                <strong>1. 尚未切換 Pages 來源為 GitHub Actions (最常見！)</strong>：<br />
+                請前往 GitHub Repo ➔ <strong>Settings ➔ Pages</strong> ➔ 在 <strong>Build and deployment / Source</strong> 下拉選單中，務必將 <code>Deploy from a branch</code> 改選為 <strong>「GitHub Actions」</strong>！
+              </p>
+              <p>
+                <strong>2. npm ci 找不到 package-lock.json 或 peer 衝突</strong>：<br />
+                請改用 <code>npm install</code>（下方腳本已替您替換），並確認專案根目錄的 <code>package-lock.json</code> 與 <code>package.json</code> 一併 commit 推送。
+              </p>
+              <p>
+                <strong>3. 分支名稱不符合</strong>：<br />
+                有些專案分支名稱為 <code>main</code>，有些為 <code>master</code>。下方腳本已設定 <code>branches: [main, master]</code>，支援兩種命名。
+              </p>
+            </div>
           </div>
 
-          {/* Method A: GitHub Actions (Recommended) */}
+          {/* Workflow configuration code */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-800 text-sm flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-teal-600" />
-                <span>最佳方式：透過 GitHub Actions 全自動建置部署</span>
+                <span>完整 GitHub Actions 腳本 (.github/workflows/main.yml)</span>
               </h3>
               <button
                 onClick={handleCopyWorkflow}
@@ -144,49 +153,28 @@ export const GitHubPagesGuideModal: React.FC<GitHubPagesGuideModalProps> = ({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>複製 deploy.yml</span>
+                    <span>複製 main.yml</span>
                   </>
                 )}
               </button>
             </div>
 
-            <ol className="list-decimal list-inside space-y-2 text-slate-700 font-medium">
-              <li>在 GitHub 建立一個新的公開或私有 Repository（例如：<code>travel-split-pwa</code>）。</li>
-              <li>將專案程式碼推送到 GitHub：
-                <div className="mt-1 p-2.5 rounded-lg bg-slate-900 text-teal-300 font-mono text-[11px] select-all">
-                  git init<br />
-                  git add .<br />
-                  git commit -m &quot;Initial commit: Travel Split PWA&quot;<br />
-                  git branch -M main<br />
-                  git remote add origin https://github.com/你的用戶名/你的專案名.git<br />
-                  git push -u origin main
-                </div>
-              </li>
-              <li>在專案內建立檔案：<code>.github/workflows/deploy.yml</code>，並貼上下方的 Actions 腳本。</li>
-              <li>進入 GitHub 專案頁面 ➔ <strong>Settings ➔ Pages</strong>：
-                <p className="text-slate-500 font-normal pl-4 pt-1">
-                  在 <strong>Build and deployment ➔ Source</strong> 下拉選單中，選擇 <strong>「GitHub Actions」</strong>。
-                </p>
-              </li>
-              <li>
-                每次只要 <code>git push</code>，GitHub 就會自動執行 <code>npm run build</code> 並發布至 <code>https://&lt;你的帳號&gt;.github.io/&lt;專案名&gt;/</code>！
-              </li>
-            </ol>
-
-            <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 text-slate-200 font-mono text-[11px] max-h-48 overflow-y-auto p-3">
+            <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-900 text-slate-200 font-mono text-[11px] max-h-56 overflow-y-auto p-3">
               <pre className="whitespace-pre">{GITHUB_ACTIONS_WORKFLOW}</pre>
             </div>
           </div>
 
-          {/* Local testing */}
-          <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 space-y-2">
-            <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-              <Terminal className="w-3.5 h-3.5 text-teal-600" />
-              <span>本機預覽編譯成品</span>
+          {/* Deployment steps */}
+          <div className="space-y-2">
+            <h4 className="font-bold text-slate-800 text-xs">
+              4 步快速完成部署流程：
             </h4>
-            <p className="text-slate-600">
-              在本地終端機執行 <code>npm run build</code>，產生的 <code>dist/</code> 資料夾即為可直接放置於任何靜態伺服器的純前端成品。也可以搭配 <code>npx serve dist</code> 在本地驗證。
-            </p>
+            <ol className="list-decimal list-inside space-y-1 text-slate-700">
+              <li>在 GitHub 建立 Repository（例如：<code>travel-split-pwa</code>）。</li>
+              <li>在專案內建立檔案 <code>.github/workflows/main.yml</code>，貼上上方內容。</li>
+              <li>進入 GitHub 倉庫的 <strong>Settings ➔ Pages</strong>，將 Source 設定為 <strong>GitHub Actions</strong>。</li>
+              <li>將程式碼（含 <code>package.json</code> 及 <code>package-lock.json</code>）push 到 GitHub，Actions 就會全自動編譯上線！</li>
+            </ol>
           </div>
         </div>
 
