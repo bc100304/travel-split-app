@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f766e"/>
+      <stop offset="50%" stop-color="#0d9488"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+    <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#042f2e" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+
+  <!-- Background rounded squircle with padding for safe zone -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- Compass / Pin + Bill Split Icon -->
+  <g filter="url(#shadow)" transform="translate(64, 56)">
+    <!-- Travel Ticket / Bill card behind -->
+    <rect x="54" y="90" width="276" height="190" rx="24" fill="#ffffff" opacity="0.95"/>
+    <line x1="84" y1="140" x2="200" y2="140" stroke="#0d9488" stroke-width="8" stroke-linecap="round"/>
+    <line x1="84" y1="175" x2="160" y2="175" stroke="#94a3b8" stroke-width="6" stroke-linecap="round"/>
+    <line x1="84" y1="210" x2="230" y2="210" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="280" cy="180" r="28" fill="#ecfdf5"/>
+    <path d="M272 170 L288 180 L272 190" stroke="#059669" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    <!-- Map pin floating on top right -->
+    <g transform="translate(230, 24)">
+      <circle cx="50" cy="50" r="42" fill="#ef4444"/>
+      <circle cx="50" cy="50" r="18" fill="#ffffff"/>
+      <path d="M50 92 L32 66 Q50 82 68 66 Z" fill="#ef4444"/>
+    </g>
+
+    <!-- Split Coin badge in front left -->
+    <g transform="translate(24, 210)">
+      <circle cx="65" cy="65" r="54" fill="url(#coinGrad)" stroke="#ffffff" stroke-width="6"/>
+      <text x="65" y="78" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="44" font-weight="900" text-anchor="middle" fill="#ffffff">¥$</text>
+    </g>
+
+    <!-- People icons representing split companion group -->
+    <g transform="translate(180, 226)">
+      <circle cx="36" cy="36" r="22" fill="#3b82f6" stroke="#ffffff" stroke-width="4"/>
+      <circle cx="76" cy="36" r="22" fill="#10b981" stroke="#ffffff" stroke-width="4"/>
+      <circle cx="116" cy="36" r="22" fill="#f97316" stroke="#ffffff" stroke-width="4"/>
+    </g>
+  </g>
+</svg>
