@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Receipt,
   Scale,
@@ -19,7 +19,7 @@ import {
   saveStoredExpenses,
   clearAllStorageData,
 } from './utils/storage';
-import { DEMO_TRIP, DEMO_EXPENSES } from './utils/demoData';
+import { DEMO_TRIP, DEMO_EXPENSES, DEFAULT_GAS_URL } from './utils/demoData';
 import { syncTripToGas, fetchTripFromGas } from './utils/gasSync';
 
 // Components
@@ -37,10 +37,16 @@ import { TripSetupWizardModal } from './components/TripSetupWizardModal';
 type ActiveTab = 'expenses' | 'settlement' | 'map' | 'settings';
 
 export default function App() {
-  // App State
+  // App State - Default to user's Google Sheet URL
   const [trip, setTrip] = useState<TripInfo>(() => {
     const saved = loadStoredTrip();
-    return saved || DEMO_TRIP;
+    if (saved) {
+      if (!saved.gasWebAppUrl) {
+        saved.gasWebAppUrl = DEFAULT_GAS_URL;
+      }
+      return saved;
+    }
+    return { ...DEMO_TRIP, gasWebAppUrl: DEFAULT_GAS_URL };
   });
 
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
@@ -60,6 +66,7 @@ export default function App() {
   // Syncing state
   const [isSyncing, setIsSyncing] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const initialFetchDoneRef = useRef(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
@@ -75,15 +82,45 @@ export default function App() {
     saveStoredExpenses(expenses);
   }, [expenses]);
 
+  // Initial cloud fetch from Google Sheet on app startup
+  useEffect(() => {
+    if (initialFetchDoneRef.current) return;
+    initialFetchDoneRef.current = true;
+
+    const targetUrl = trip.gasWebAppUrl || DEFAULT_GAS_URL;
+    if (targetUrl) {
+      fetchTripFromGas(targetUrl)
+        .then((res) => {
+          if (res.status === 'success') {
+            if (res.trip) {
+              setTrip((prev) => ({
+                ...res.trip!,
+                gasWebAppUrl: targetUrl,
+                lastSyncedAt: Date.now(),
+              }));
+            }
+            if (res.expenses && Array.isArray(res.expenses) && res.expenses.length > 0) {
+              setExpenses(res.expenses);
+            }
+            showToast('已自 Google 試算表連線載入最新資料！');
+          }
+        })
+        .catch((err) => {
+          console.warn('Initial cloud sync check:', err);
+        });
+    }
+  }, [trip.gasWebAppUrl]);
+
   // Sync with Google Sheets via GAS (Upload)
   const handleSyncGasUpload = useCallback(async () => {
-    if (!trip.gasWebAppUrl) {
+    const targetUrl = trip.gasWebAppUrl || DEFAULT_GAS_URL;
+    if (!targetUrl) {
       setIsGasGuideOpen(true);
       return;
     }
     setIsSyncing(true);
     try {
-      await syncTripToGas(trip.gasWebAppUrl, trip, expenses);
+      await syncTripToGas(targetUrl, trip, expenses);
       setTrip((prev) => ({ ...prev, lastSyncedAt: Date.now() }));
       showToast('已成功上傳並同步至 Google 試算表！');
     } catch (err: any) {
@@ -95,15 +132,16 @@ export default function App() {
 
   // Sync with Google Sheets via GAS (Download)
   const handleSyncGasDownload = useCallback(async () => {
-    if (!trip.gasWebAppUrl) {
+    const targetUrl = trip.gasWebAppUrl || DEFAULT_GAS_URL;
+    if (!targetUrl) {
       setIsGasGuideOpen(true);
       return;
     }
     setIsSyncing(true);
     try {
-      const res = await fetchTripFromGas(trip.gasWebAppUrl);
+      const res = await fetchTripFromGas(targetUrl);
       if (res.trip) {
-        setTrip((prev) => ({ ...res.trip!, gasWebAppUrl: prev.gasWebAppUrl }));
+        setTrip((prev) => ({ ...res.trip!, gasWebAppUrl: targetUrl }));
       }
       if (res.expenses && Array.isArray(res.expenses)) {
         setExpenses(res.expenses);
@@ -116,13 +154,15 @@ export default function App() {
     }
   }, [trip.gasWebAppUrl]);
 
-  // Handlers for Expenses
+  // Handlers for Expenses (with background auto-sync to Google Sheet)
   const handleSaveExpense = (expenseData: Omit<ExpenseItem, 'id' | 'createdAt'> & { id?: string }) => {
+    let updatedExpenses: ExpenseItem[];
     if (expenseData.id) {
       // Edit existing
-      setExpenses((prev) =>
-        prev.map((e) => (e.id === expenseData.id ? { ...e, ...expenseData } : e))
+      updatedExpenses = expenses.map((e) =>
+        e.id === expenseData.id ? { ...e, ...expenseData } : e
       );
+      setExpenses(updatedExpenses);
       showToast('支出紀錄已修改完成！');
     } else {
       // Add new
@@ -131,12 +171,21 @@ export default function App() {
         id: `exp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         createdAt: Date.now(),
       };
-      setExpenses((prev) => [newItem, ...prev]);
+      updatedExpenses = [newItem, ...expenses];
+      setExpenses(updatedExpenses);
       showToast('已記錄一筆新花費！');
       confetti({ particleCount: 30, spread: 45, origin: { y: 0.8 } });
     }
 
     setEditingExpense(null);
+
+    // Auto-sync to Google Sheets in background
+    const targetUrl = trip.gasWebAppUrl || DEFAULT_GAS_URL;
+    if (targetUrl) {
+      syncTripToGas(targetUrl, trip, updatedExpenses)
+        .then(() => setTrip((prev) => ({ ...prev, lastSyncedAt: Date.now() })))
+        .catch((err) => console.warn('Background auto-sync error:', err));
+    }
   };
 
   const handleEditExpense = (expense: ExpenseItem) => {
@@ -146,17 +195,26 @@ export default function App() {
 
   const handleDeleteExpense = (expenseId: string) => {
     if (confirm('確定要刪除這筆開銷紀錄嗎？')) {
-      setExpenses((prev) => prev.filter((e) => e.id !== expenseId));
+      const updated = expenses.filter((e) => e.id !== expenseId);
+      setExpenses(updated);
       showToast('已刪除開銷紀錄');
+
+      // Auto-sync deletion to Google Sheets in background
+      const targetUrl = trip.gasWebAppUrl || DEFAULT_GAS_URL;
+      if (targetUrl) {
+        syncTripToGas(targetUrl, trip, updated)
+          .then(() => setTrip((prev) => ({ ...prev, lastSyncedAt: Date.now() })))
+          .catch((err) => console.warn('Background delete-sync error:', err));
+      }
     }
   };
 
   // Demo & Reset Handlers
   const handleLoadDemoData = () => {
-    setTrip(DEMO_TRIP);
+    setTrip({ ...DEMO_TRIP, gasWebAppUrl: DEFAULT_GAS_URL });
     setExpenses(DEMO_EXPENSES);
     setIsSetupWizardOpen(false);
-    showToast('已載入東京賞楓 4 人示範行程與開銷！');
+    showToast('已載入示範行程與開銷！');
     confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
   };
 
@@ -171,7 +229,7 @@ export default function App() {
       currency: 'TWD',
       currencySymbol: 'NT$',
       members: [{ id: 'mem-1', name: '我', color: '#0d9488' }],
-      gasWebAppUrl: '',
+      gasWebAppUrl: DEFAULT_GAS_URL,
     });
     showToast('所有資料已重設');
   };
@@ -394,7 +452,7 @@ export default function App() {
       <TripSetupWizardModal
         isOpen={isSetupWizardOpen}
         onComplete={(newTrip) => {
-          setTrip(newTrip);
+          setTrip({ ...newTrip, gasWebAppUrl: DEFAULT_GAS_URL });
           setExpenses([]);
           setIsSetupWizardOpen(false);
           showToast('旅程已建立！');

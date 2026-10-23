@@ -1,6 +1,10 @@
 {
   "name": "旅費分帳通 - 旅遊記帳與分帳 PWA",
   "description": "專為多人同行設計的旅遊記帳與分帳 PWA，支援 GPS 定位足跡、Google Maps 連動、智慧簡化結算演算法與 Google Sheets / GAS 雲端無縫同步。",
-  "requestFramePermissions": ["geolocation"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

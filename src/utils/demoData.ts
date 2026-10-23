@@ -7,6 +7,8 @@ export const DEMO_MEMBERS: Member[] = [
   { id: 'mem-4', name: '佩佩', color: '#f59e0b' },
 ];
 
+export const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzTTcQe5KY2woavuh8RIQ6djxXVub7IefJ3rqn2dA4AV2d8WtshQRUK1TxPHtHJ-nEP/exec';
+
 export const DEMO_TRIP: TripInfo = {
   id: 'trip-demo-tokyo-2026',
   name: '東京秋天漫遊賞楓趣 🇯🇵',
@@ -15,7 +17,7 @@ export const DEMO_TRIP: TripInfo = {
   currency: 'TWD',
   currencySymbol: 'NT$',
   members: DEMO_MEMBERS,
-  gasWebAppUrl: '',
+  gasWebAppUrl: DEFAULT_GAS_URL,
 };
 
 export const DEMO_EXPENSES: ExpenseItem[] = [
